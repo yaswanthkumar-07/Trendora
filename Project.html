@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trendora | Luxury Fashion</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root{
+--primary:#7F5AF0;
+--secondary:#2CB67D;
+--light:#fffffe;
+}
+
+body{
+margin:0;
+font-family:Poppins,sans-serif;
+background:var(--light);
+}
+
+nav{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:20px 60px;
+background:white;
+box-shadow:0 4px 20px rgba(0,0,0,0.05);
+position:sticky;
+top:0;
+z-index:1000;
+}
+
+.logo{
+display:flex;
+align-items:center;
+gap:10px;
+font-size:24px;
+font-weight:600;
+color:var(--primary);
+}
+
+.logo-icon{
+width:40px;
+height:40px;
+background:linear-gradient(45deg,var(--primary),var(--secondary));
+border-radius:12px;
+display:flex;
+align-items:center;
+justify-content:center;
+color:white;
+font-weight:bold;
+}
+
+.cart-icon{
+cursor:pointer;
+font-size:18px;
+}
+
+.hero{
+height:60vh;
+background:linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)),
+url("https://images.pexels.com/photos/1926769/pexels-photo-1926769.jpeg");
+background-size:cover;
+background-position:center;
+display:flex;
+align-items:center;
+justify-content:center;
+color:white;
+text-align:center;
+}
+
+.products{
+padding:60px;
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+gap:40px;
+}
+
+.card{
+background:white;
+border-radius:20px;
+overflow:hidden;
+box-shadow:0 10px 25px rgba(0,0,0,0.08);
+transition:0.3s;
+}
+
+.card:hover{
+transform:translateY(-8px);
+}
+
+.card img{
+width:100%;
+height:280px;
+object-fit:cover;
+}
+
+.card-body{
+padding:20px;
+}
+
+.price{
+color:var(--primary);
+font-weight:600;
+}
+
+.btn{
+background:var(--primary);
+color:white;
+padding:10px 15px;
+border-radius:8px;
+border:none;
+cursor:pointer;
+}
+
+.cart{
+position:fixed;
+right:-400px;
+top:0;
+width:350px;
+height:100vh;
+background:white;
+box-shadow:-5px 0 25px rgba(0,0,0,0.1);
+transition:0.4s;
+padding:20px;
+overflow-y:auto;
+z-index:2000;
+}
+
+.cart.open{
+right:0;
+}
+
+.cart-item{
+display:flex;
+justify-content:space-between;
+margin-bottom:10px;
+}
+
+.qty-btn{
+background:var(--primary);
+color:white;
+border:none;
+padding:4px 8px;
+border-radius:6px;
+cursor:pointer;
+}
+
+.checkout-btn{
+background:var(--secondary);
+color:white;
+padding:12px;
+width:100%;
+border-radius:10px;
+margin-top:15px;
+border:none;
+cursor:pointer;
+}
+
+.modal{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+display:none;
+justify-content:center;
+align-items:center;
+z-index:3000;
+}
+
+.modal-content{
+background:white;
+width:95%;
+max-width:450px;
+padding:20px;
+border-radius:20px;
+max-height:90vh;
+overflow:auto;
+}
+
+.modal-content input{
+width:100%;
+padding:8px;
+margin:6px 0;
+border-radius:8px;
+border:1px solid #ddd;
+}
+
+.success{
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:white;
+justify-content:center;
+align-items:center;
+flex-direction:column;
+z-index:5000;
+}
+
+.success.show{
+display:flex;
+}
+
+.checkmark{
+font-size:80px;
+color:var(--secondary);
+}
+</style>
+</head>
+
+<body>
+
+<nav>
+<div class="logo">
+<div class="logo-icon">T</div>
+TRENDORA
+</div>
+<div class="cart-icon" onclick="toggleCart()">🛒 (<span id="cartCount">0</span>)</div>
+</nav>
+
+<div class="hero">
+<div>
+<h1>Elevate Your Style</h1>
+<p>Premium collections curated for you.</p>
+</div>
+</div>
+
+<div class="products" id="productContainer"></div>
+
+<div class="cart" id="cart">
+<h3>Your Cart</h3>
+<div id="cartItems"></div>
+<h4>Total: INR <span id="total">0</span></h4>
+<button class="checkout-btn" onclick="openPayment()">Proceed to Payment</button>
+</div>
+
+<div class="modal" id="paymentModal">
+<div class="modal-content" id="paymentContent"></div>
+</div>
+
+<div class="success" id="successPage">
+<div class="checkmark">✔</div>
+<h2>Order Confirmed!</h2>
+<p>Invoice downloaded successfully.</p>
+</div>
+
+<script>
+
+const { jsPDF } = window.jspdf
+
+const products=[
+{ id:1, name:"Men Jacket", price:1999, image:"https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg" },
+{ id:2, name:"Women Dress", price:2499, image:"https://images.pexels.com/photos/985635/pexels-photo-985635.jpeg" },
+{ id:3, name:"Luxury Watch", price:4999, image:"https://images.pexels.com/photos/190819/pexels-photo-190819.jpeg" },
+{ id:4, name:"Designer Shoes", price:3499, image:"https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg" }
+]
+
+let cart=[]
+
+function displayProducts(){
+const container=document.getElementById("productContainer")
+container.innerHTML=""
+products.forEach(p=>{
+container.innerHTML+=`
+<div class="card">
+<img src="${p.image}" alt="${p.name}" loading="lazy"
+onerror="this.src='https://via.placeholder.com/400x300?text=Image+Not+Available'">
+<div class="card-body">
+<h4>${p.name}</h4>
+<p class="price">INR ${p.price.toLocaleString("en-IN")}</p>
+<button class="btn" onclick="addToCart(${p.id})">Add to Cart</button>
+</div>
+</div>`
+})
+}
+displayProducts()
+
+function addToCart(id){
+const product=products.find(p=>p.id===id)
+const existing=cart.find(item=>item.id===id)
+if(existing){existing.qty++}
+else{cart.push({...product,qty:1})}
+updateCart()
+}
+
+function updateCart(){
+const items=document.getElementById("cartItems")
+items.innerHTML=""
+let total=0,count=0
+cart.forEach(item=>{
+total+=item.price*item.qty
+count+=item.qty
+items.innerHTML+=`
+<div class="cart-item">
+<span>${item.name}</span>
+<div>
+<button class="qty-btn" onclick="changeQty(${item.id},-1)">-</button>
+${item.qty}
+<button class="qty-btn" onclick="changeQty(${item.id},1)">+</button>
+</div>
+</div>`
+})
+document.getElementById("total").innerText=total.toLocaleString("en-IN")
+document.getElementById("cartCount").innerText=count
+}
+
+function changeQty(id,change){
+const item=cart.find(p=>p.id===id)
+if(!item) return
+item.qty+=change
+if(item.qty<=0){cart=cart.filter(p=>p.id!==id)}
+updateCart()
+}
+
+function toggleCart(){
+document.getElementById("cart").classList.toggle("open")
+}
+
+function openPayment(){
+if(cart.length===0){ alert("Cart is empty"); return }
+let total=document.getElementById("total").innerText
+document.getElementById("paymentModal").style.display="flex"
+document.getElementById("paymentContent").innerHTML=`
+<h3>Checkout</h3>
+<input id="customerName" placeholder="Full Name">
+<h4>Total: INR ${total}</h4>
+<button class="checkout-btn" onclick="completeOrder()">Place Order</button>
+`
+}
+
+function completeOrder(){
+let customerName=document.getElementById("customerName").value || "Customer"
+let orderID="TRD-"+Math.floor(Math.random()*1000000)
+let subtotal=0
+cart.forEach(item=>{ subtotal+=item.price*item.qty })
+let gst=subtotal*0.18
+let grandTotal=subtotal+gst
+generateInvoice(customerName,orderID,subtotal,gst,grandTotal)
+cart=[]
+updateCart()
+document.getElementById("paymentModal").style.display="none"
+document.getElementById("successPage").classList.add("show")
+setTimeout(()=>{ document.getElementById("successPage").classList.remove("show") },3000)
+}
+
+function generateInvoice(customerName,orderID,subtotal,gst,grandTotal){
+const doc=new jsPDF()
+
+doc.setFontSize(22)
+doc.text("TRENDORA",20,20)
+
+doc.setFontSize(12)
+doc.text("Order ID: "+orderID,20,40)
+doc.text("Customer: "+customerName,20,48)
+doc.text("Date: "+new Date().toLocaleString(),20,56)
+
+let y=70
+
+cart.forEach(item=>{
+doc.text(
+item.name+" x"+item.qty+" - INR "+
+(item.price*item.qty).toLocaleString("en-IN"),
+20,y)
+y+=8
+})
+
+y+=10
+doc.text("Subtotal: INR "+subtotal.toLocaleString("en-IN"),20,y)
+y+=8
+doc.text("GST (18%): INR "+gst.toLocaleString("en-IN"),20,y)
+y+=8
+
+doc.setFontSize(14)
+doc.text("Grand Total: INR "+grandTotal.toLocaleString("en-IN"),20,y)
+
+doc.save("Trendora_Invoice_"+orderID+".pdf")
+}
+
+</script>
+
+</body>
+</html>
